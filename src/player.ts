@@ -95,8 +95,9 @@ const renderBoxes = (ns: MyNS, factionBox: BoxNode, playerBox: BoxNode): void =>
     // Factions
     let facBody = "";
     const factionsForReputation = getFactionsForReputation(ns, ns.getPlayer());
-    for (const [name, maxrep] of factionsForReputation) {
+    for (const [name,] of factionsForReputation) {
         const rep = ns.singularity.getFactionRep(name);
+        const maxrep = maxAugmentRep(ns, name);
         facBody += `<p>${name}</p><progress max="${maxrep}" value="${rep}">${ns.formatPercent(rep / maxrep, 2)}</progress>`;
     }
     factionBox.body.innerHTML = facBody;
@@ -284,7 +285,7 @@ const buyAugments = async (ns: MyNS, player: Player) => {
 						timeToEarn = needed / income;
 					}
 					ns.print(`INFO Have enough reputation, but now need $${ns.formatNumber(overallAugmentationCost, 1)} (~${seconds2string(ns, timeToEarn)}).`);
-                    globalStatus = `Have enough reputation, but now need $${ns.formatNumber(overallAugmentationCost, 1)} (~${seconds2string(ns, timeToEarn)}).`;
+                    globalStatus = `Have enough reputation to buy all augments, but now need $${ns.formatNumber(overallAugmentationCost, 1)} (~${seconds2string(ns, timeToEarn)}).`;
 				}
 			}
 		}
@@ -379,6 +380,12 @@ const liquidateStocks = async (ns: MyNS) => {
 // Put everything you want to do before reset here
 const resetPrep = async (ns: MyNS, player: Player) => {
 	// stocks are sold in advance of purchasing anything
+    // But remove sidebar items
+    if (sidebar !== null) {
+        for (const child of sidebar.children) {
+            sidebar.removeChild(child)
+        }
+    }
 
 	// buy as many infinite augments as we can
 	let replist: [string, number][] = [];
@@ -501,7 +508,7 @@ const currentActionUseful = (ns: MyNS, player: Player, factions: Map<string, num
 						const gainRates = ns.formulas.work.factionGains(player, "hacking", ns.singularity.getFactionFavor(currWork.factionName));
 						// seems a cycle is .2 ms, so RepGainRate * 5 is gain per second
 						const reputationTimeRemaining = repRemaining / (gainRates.reputation * 5);
-						ns.print("Reputation remaining: " + ns.nFormat(repRemaining, "0.0a") + " in " + seconds2string(ns, reputationTimeRemaining));
+						ns.print("Reputation remaining: " + ns.formatNumber(repRemaining, 1) + " in " + seconds2string(ns, reputationTimeRemaining));
 					}
 					return true;
 				}

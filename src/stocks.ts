@@ -1,5 +1,7 @@
 import { NS } from "@ns";
 import { dumplog } from "lib/logs";
+import { createSidebarItem, sidebar } from "lib/box/box";
+import { BoxNode } from "../MyTypes";
 
 // requires 4s Market Data TIX API Access
 
@@ -72,6 +74,12 @@ const getSpendingMoney = (ns: NS) => {
     return ns.getServerMoneyAvailable("home") * factor;
 }
 
+let globalSpent = 0;
+let globalCashed = 0;
+let globalProfit = 0;
+let overallProfit = 0;
+let overallValue = 0;
+
 /** @param {NS} ns */
 export async function main(ns: NS): Promise<void> {
     ns.disableLog("ALL");
@@ -82,7 +90,13 @@ export async function main(ns: NS): Promise<void> {
     */
     const port = ns.getPortHandle(20);
 
+    const box: BoxNode = createSidebarItem("Stocks", "<p>Loading...</p>", "\ueb03") as BoxNode;
+
 	while (true) {
+        if ( (sidebar !== null) && (! sidebar.contains(box)) ) {
+            ns.exit();
+        }
+
         if (port.peek() === "LIQUIDATE") {
             port.clear();
             liquidate(ns);
@@ -99,10 +113,10 @@ export async function main(ns: NS): Promise<void> {
 
 		if (! ns.stock.hasWSEAccount()) {
 			ns.stock.purchaseWseAccount();
-		} else if (! ns.stock.has4SData()) {
-			ns.stock.purchase4SMarketData();
 		} else if (! ns.stock.hasTIXAPIAccess()) {
 			ns.stock.purchaseTixApi();
+		} else if (! ns.stock.has4SData()) {
+			ns.stock.purchase4SMarketData();
 		} else if (! ns.stock.has4SDataTIXAPI()) {
 			ns.stock.purchase4SMarketDataTixApi();
 		}
@@ -113,8 +127,44 @@ export async function main(ns: NS): Promise<void> {
 			tendStocks(ns);
 		}
 
+        renderBox(ns, box);
 		await ns.sleep(5 * 1000);
 	}
+}
+
+const renderBox = (ns: NS, box: BoxNode): void => {
+    const money = ns.getServerMoneyAvailable("home");
+    let body = ""
+    if (! ns.stock.hasWSEAccount()) {
+        body += `<p style="color: red">Need WSE account</p><progress max="200000000" value="${money}"></progress>`
+    } else if (! ns.stock.hasTIXAPIAccess()) {
+        body += `<p style="color: red">Need TIX API access</p><progress max="5000000000" value="${money}"></progress>`
+    } else if (! ns.stock.has4SData()) {
+        body += `<p style="color: red">Need 4S data</p><progress max="5000000000" value="${money}"></progress>`
+    } else if (! ns.stock.has4SDataTIXAPI()) {
+        body += `<p style="color: red">Need 4S API access</p><progress max="100000000000" value="${money}"></progress>`
+    } else {
+        body += `<p>Money spent: $${ns.formatNumber(globalSpent, 2)}</p>`;
+        globalSpent = 0;
+        body += `<p>Cashed out: $${ns.formatNumber(globalCashed, 2)}</p>`;
+        globalCashed = 0;
+        if (globalProfit > 0) {
+            body += `<p style="color: green">Profit earned: $${ns.formatNumber(globalProfit, 2)}</p>`;
+        } else {
+            body += `<p style="color: red">Profit earned: $${ns.formatNumber(globalProfit, 2)}</p>`;
+        }
+        globalProfit = 0;
+        body += "<hr>";
+        body += `<p>Overall value: $${ns.formatNumber(overallValue, 2)}</p>`;
+        if (overallProfit > 0) {
+            body += `<p style="color: green">Overall profit: $${ns.formatNumber(overallProfit, 2)}</p>`;
+        } else {
+            body += `<p style="color: red">Overall profit: $${ns.formatNumber(overallProfit, 2)}</p>`;
+        }
+    }
+
+    box.body.innerHTML = body;
+    box.recalcHeight();
 }
 
 const tendStocks = (ns: NS): void => {
@@ -125,8 +175,8 @@ const tendStocks = (ns: NS): void => {
 
     const longStocks = new Set<string>();
     const shortStocks = new Set<string>();
-    let overallValue = 0;
-    let overallProfit = 0;
+    overallValue = 0;
+    overallProfit = 0;
 
     for (const stock of stocks) {
         if (stock.longShares > 0) {
@@ -139,52 +189,57 @@ const tendStocks = (ns: NS): void => {
             else {
                 const salePrice = ns.stock.sellStock(stock.sym, stock.longShares);
                 const saleTotal = salePrice * stock.longShares;
+                globalCashed += saleTotal;
                 const saleCost = stock.longPrice * stock.longShares;
                 const saleProfit = saleTotal - saleCost - 2 * commission;
+                globalProfit += saleProfit;
                 stock.longShares = 0;
                 shortStocks.add(stock.sym);
-                ns.print(`WARN ${stock.summary} SOLD for ${ns.nFormat(saleProfit, "$0.0a")} profit`);
+                ns.print(`WARN ${stock.summary} SOLD for $${ns.formatNumber(saleProfit, 1)} profit`);
             }
         }
         if (stock.shortShares > 0) {
             if (stock.forecast < 0.5) {
                 shortStocks.add(stock.sym);
-                ns.print(`INFO ${stock.summary} SHORT ${ns.nFormat(stock.cost + stock.profit, "0.0a")} ${ns.formatNumber(100 * stock.profit / stock.cost, 2)}%`);
+                ns.print(`INFO ${stock.summary} SHORT $${ns.formatNumber(stock.cost + stock.profit, 1)} ${ns.formatNumber(100 * stock.profit / stock.cost, 2)}%`);
                 overallValue += (stock.cost + stock.profit);
                 overallProfit += stock.profit;
             }
             else {
                 const salePrice = ns.stock.sellShort(stock.sym, stock.shortShares);
                 const saleTotal = salePrice * stock.shortShares;
+                globalCashed += saleTotal;
                 const saleCost = stock.shortPrice * stock.shortShares;
                 const saleProfit = saleTotal - saleCost - 2 * commission;
+                globalProfit += saleProfit;
                 stock.shortShares = 0;
                 longStocks.add(stock.sym);
-                ns.print(`WARN ${stock.summary} SHORT SOLD for ${ns.nFormat(saleProfit, "$0.0a")} profit`);
+                ns.print(`WARN ${stock.summary} SHORT SOLD for $${ns.formatNumber(saleProfit, 1)} profit`);
             }
         }
     }
 
     for (const stock of stocks) {
         const money = getSpendingMoney(ns);
-        //ns.print(`INFO ${stock.summary}`);
         if (stock.forecast > 0.55) {
             longStocks.add(stock.sym);
-            //ns.print(`INFO ${stock.summary}`);
             if (money > reserve) {
                 const sharesToBuy = Math.min(stock.maxShares, Math.floor((money - commission) / stock.askPrice));
-                if (ns.stock.buyStock(stock.sym, sharesToBuy) > 0) {
-                    ns.print(`WARN ${stock.summary} LONG BOUGHT ${ns.nFormat(sharesToBuy, "$0.0a")}`);
+                const salePrice = ns.stock.buyStock(stock.sym, sharesToBuy);
+                if (salePrice > 0) {
+                    ns.print(`WARN ${stock.summary} LONG BOUGHT ${ns.formatNumber(sharesToBuy, 1)}`);
+                    globalSpent += (sharesToBuy * salePrice) + commission;
                 }
             }
         }
         else if (stock.forecast < 0.45 && shortAvailable) {
             shortStocks.add(stock.sym);
-            //ns.print(`INFO ${stock.summary}`);
             if (money > reserve) {
                 const sharesToBuy = Math.min(stock.maxShares, Math.floor((money - commission) / stock.bidPrice));
-                if (ns.stock.buyShort(stock.sym, sharesToBuy) > 0) {
-                    ns.print(`WARN ${stock.summary} SHORT BOUGHT $${ns.formatNumber(sharesToBuy, 1)}`);
+                const salePrice = ns.stock.buyShort(stock.sym, sharesToBuy);
+                if (salePrice > 0) {
+                    ns.print(`WARN ${stock.summary} SHORT BOUGHT ${ns.formatNumber(sharesToBuy, 1)}`);
+                    globalSpent += (sharesToBuy * salePrice) + commission;
                 }
             }
         }
@@ -210,20 +265,27 @@ const tendStocks = (ns: NS): void => {
 export const liquidate = (ns: NS): void => {
     ns.print("Received LIQUIDATION command");
     const stocks = getAllStocks(ns);
+    globalSpent = 0;
+    globalCashed = 0;
+    globalProfit = 0;
     for (const stock of stocks) {
         if (stock.longShares > 0) {
             const salePrice = ns.stock.sellStock(stock.sym, stock.longShares);
             const saleTotal = salePrice * stock.longShares;
+            globalCashed += saleTotal;
             const saleCost = stock.longPrice * stock.longShares;
             const saleProfit = saleTotal - saleCost - 2 * commission;
+            globalProfit += saleProfit;
             stock.longShares = 0;
             ns.print(`WARN ${stock.summary} SOLD for $${ns.formatNumber(saleProfit, 1)} profit`);
         }
         if (stock.shortShares > 0) {
             const salePrice = ns.stock.sellShort(stock.sym, stock.shortShares);
             const saleTotal = salePrice * stock.shortShares;
+            globalCashed += saleTotal;
             const saleCost = stock.shortPrice * stock.shortShares;
             const saleProfit = saleTotal - saleCost - 2 * commission;
+            globalProfit += saleProfit;
             stock.shortShares = 0;
             ns.print(`WARN ${stock.summary} SHORT SOLD for $${ns.formatNumber(saleProfit, 1)} profit`);
         }

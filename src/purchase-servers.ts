@@ -7,7 +7,7 @@ import { BoxNode } from "../MyTypes";
  *   - Buy a new server
  *   - Buy a new hacknet
  *   - Upgrade an existing server
- *   - Upgrade an existing hacknet
+ *   - Upgrade an existing hacknet to target level
  *
  * Set a RAM target
  * Look at all possible options and choose the cheapest one
@@ -22,6 +22,7 @@ interface IOption {
     cost: number;
 }
 
+/** @param {NS} ns **/
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog("ALL");
 
@@ -286,12 +287,7 @@ const totalOwnedRam = (ns: NS): number => {
 const calcRamTarget = (ns: NS): number => {
     let target = ns.getServerMaxRam("home") / 2;
     const percentOwned = totalOwnedRam(ns) / totalMaxRam(ns);
-    if (percentOwned > 0.33) {
-        target *= 2;
-    }
-    if (percentOwned > 0.66) {
-        target *= 2;
-    }
+    target *= Math.pow(2, Math.floor(percentOwned / 0.25));
     const maxes: number[] = [];
     if (! purchasedServersMaxed(ns)) {
         maxes.push(ns.getPurchasedServerMaxRam());

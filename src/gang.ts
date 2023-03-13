@@ -3,6 +3,10 @@ import { BoxNode } from "../MyTypes";
 import { createSidebarItem, sidebar } from "lib/box/box";
 import { seconds2string } from "lib/time";
 
+let lastRep = 0;
+const deltas: number[] = [];
+const sleepTime = 2;
+
 /** @param {NS} ns **/
 export async function main(ns: NS): Promise<void> {
 	ns.disableLog("ALL");
@@ -21,6 +25,16 @@ export async function main(ns: NS): Promise<void> {
             ns.exit();
         }
 
+        const gangInfo = ns.gang.getGangInformation();
+        const name = gangInfo.faction;
+        const reputation = ns.singularity.getFactionRep(name);
+        const delta = reputation - lastRep;
+        deltas.push(delta);
+        if (deltas.length > 10) {
+            deltas.splice(0, 1);
+        }
+        lastRep = reputation;
+
         recruit(ns);
 		equipMembers(ns);
 		ascend(ns);
@@ -28,15 +42,15 @@ export async function main(ns: NS): Promise<void> {
 		assignMembers(ns, territoryWinChance);
 
         renderBox(ns, box, territoryWinChance);
-		await ns.sleep(2000);
+		await ns.sleep(sleepTime * 1000);
 	}
 }
 
 function renderBox(ns: NS, box: BoxNode, winChance: number): void {
     let bodyStr = "";
+    const gangInfo = ns.gang.getGangInformation();
 
     // membership information until full
-    const gangInfo = ns.gang.getGangInformation();
     const members = ns.gang.getMemberNames();
     if (members.length < 12) {
         const respectNeeded = getRespectNeededToRecruitMember(ns);
@@ -50,7 +64,7 @@ function renderBox(ns: NS, box: BoxNode, winChance: number): void {
     bodyStr += `<p>Income: ${ns.formatNumber(gangInfo.moneyGainRate * 5, 2)}/sec</p>`
 
     // power
-    bodyStr += `<p>Power: ${gangInfo.power}`;
+    bodyStr += `<p>Power: ${ns.formatNumber(gangInfo.power, 2)}`;
 
     // territory
     bodyStr += `<p>Territory: ${ns.formatPercent(gangInfo.territory, 2)}`;
@@ -63,6 +77,17 @@ function renderBox(ns: NS, box: BoxNode, winChance: number): void {
         bodyStr += `<span style="color: red">`;
     }
     bodyStr += `Win chance: ${ns.formatPercent(winChance, 2)}</span></p>`;
+
+    // calculate rep gain
+    const avg = deltas.reduce((acc, curr) => { return acc + curr; }, 0) / deltas.length;
+    const perSec = avg / sleepTime;
+    const reputation = ns.singularity.getFactionRep(gangInfo.faction);
+    const goal = 2500000;
+    if (reputation < goal) {
+        const needed = goal - reputation;
+        const time = needed / perSec;
+        bodyStr += `<p>~${seconds2string(ns, time)} to max rep</p>`;
+    }
 
     box.body.innerHTML = bodyStr;
     box.recalcHeight();
