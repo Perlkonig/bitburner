@@ -2,6 +2,15 @@ import { GangGenInfo, NS } from "@ns";
 import { BoxNode } from "../MyTypes";
 import { createSidebarItem, sidebar } from "lib/box/box";
 import { seconds2string } from "lib/time";
+import { wng } from "lib/names";
+
+const tasks = ["Mug People", "Deal Drugs", "Strongarm Civilians", "Run a Con", "Armed Robbery", "Traffick Illegal Arms", "Threaten & Blackmail", "Human Trafficking", "Terrorism"];
+
+const augmentationNames = ["Bionic Arms", "Bionic Legs", "Bionic Spine", "BrachiBlades", "Nanofiber Weave", "Synthetic Heart", "Synfibril Muscle", "Graphene Bone Lacings", "BitWire", "Neuralstimulator", "DataJack"];
+
+const combatGangs = ["Speakers for the Dead", "The Dark Army", "The Syndicate", "Tetrads", "Slum Snakes"]
+
+const hackingGangs = ["NiteSec", "The Black Hand"];
 
 let lastRep = 0;
 const deltas: number[] = [];
@@ -66,17 +75,19 @@ function renderBox(ns: NS, box: BoxNode, winChance: number): void {
     // power
     bodyStr += `<p>Power: ${ns.formatNumber(gangInfo.power, 2)}`;
 
-    // territory
-    bodyStr += `<p>Territory: ${ns.formatPercent(gangInfo.territory, 2)}`;
+    if (gangInfo.territory < 1) {
+        // territory
+        bodyStr += `<p>Territory: ${ns.formatPercent(gangInfo.territory, 2)}`;
 
-    // win chance
-    bodyStr += "<p>";
-    if (gangInfo.territoryWarfareEngaged) {
-        bodyStr += `<span style="color: green">`;
-    } else {
-        bodyStr += `<span style="color: red">`;
+        // win chance
+        bodyStr += "<p>";
+        if (gangInfo.territoryWarfareEngaged) {
+            bodyStr += `<span style="color: green">`;
+        } else {
+            bodyStr += `<span style="color: red">`;
+        }
+        bodyStr += `Win chance: ${ns.formatPercent(winChance, 2)}</span></p>`;
     }
-    bodyStr += `Win chance: ${ns.formatPercent(winChance, 2)}</span></p>`;
 
     // calculate rep gain
     const avg = deltas.reduce((acc, curr) => { return acc + curr; }, 0) / deltas.length;
@@ -249,11 +260,11 @@ function memberCombatStats(ns: NS, member: string) {
 	return (memberInfo.str + memberInfo.def + memberInfo.dex + memberInfo.agi) / 4;
 }
 
-
 function recruit(ns: NS) {
 	if (ns.gang.canRecruitMember()) {
-		const members = ns.gang.getMemberNames();
-		const memberName = "Thug-" + members.length;
+		// const members = ns.gang.getMemberNames();
+		// const memberName = "Thug-" + members.length;
+        const memberName = wng();
 		ns.print("Recruit new gang member " + memberName);
 		ns.gang.recruitMember(memberName);
 	}
@@ -268,11 +279,3 @@ const getRespectNeededToRecruitMember = (ns: NS) =>  {
 	const i = members.length - (numFreeMembers - 1);
 	return Math.pow(5, i);
 }
-
-const tasks = ["Mug People", "Deal Drugs", "Strongarm Civilians", "Run a Con", "Armed Robbery", "Traffick Illegal Arms", "Threaten & Blackmail", "Human Trafficking", "Terrorism"];
-
-const augmentationNames = ["Bionic Arms", "Bionic Legs", "Bionic Spine", "BrachiBlades", "Nanofiber Weave", "Synthetic Heart", "Synfibril Muscle", "Graphene Bone Lacings", "BitWire", "Neuralstimulator", "DataJack"];
-
-const combatGangs = ["Speakers for the Dead", "The Dark Army", "The Syndicate", "Tetrads", "Slum Snakes"]
-
-const hackingGangs = ["NiteSec", "The Black Hand"];
