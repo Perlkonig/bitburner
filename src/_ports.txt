@@ -1,0 +1,8 @@
+Port#   Scripts                 Purpose
+=======================================
+1       Stocks -> Hack          Stock symbols to grow
+2       Stocks -> Hack          Stock symbols to hack
+3       Write -> Hack           How to use extra RAM (xp hack or share)
+
+20      Player <-> Stocks       For communicating a LIQUIDATION request
+
