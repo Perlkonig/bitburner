@@ -1,0 +1,5 @@
+NoContracts		Disables searching for and auto-solving contracts
+NoCorp			Disables automatic corp handling (until investors are tricked)
+NoDonations		Disables auto-donation of funds to factions
+NoStocks		Disables investing in the stock market
+Stay			Disables the auto-installation of a backdoor on the final server
