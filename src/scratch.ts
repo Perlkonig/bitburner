@@ -1,8 +1,13 @@
 import { MyNS } from "../MyTypes";
-import { createSidebarItem } from "lib/box/box";
+import { wng } from "lib/names";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function main(ns: MyNS): Promise<void> {
-    const karma = Math.abs(ns.heart.break());
-    createSidebarItem("Karma", `<progress max="54000" value="${karma}"></progress>`, "\ueb05");
+    let num = 5;
+    if (ns.args.length > 0) {
+        num = ns.args[0] as number;
+    }
+    for (let i = 0; i < num; i++) {
+        ns.tprint(wng());
+    }
 }
