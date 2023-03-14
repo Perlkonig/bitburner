@@ -21,14 +21,14 @@ export async function main(ns: NS): Promise<void> {
         let body = "";
 
         const [active, overall] = ns.getTotalScriptIncome();
+        history.push(active);
+        if (history.length > limit) {
+            history.splice(0, 1);
+        }
         const changeAbs = active - history[0];
         let changeRel = Infinity;
         if (history[0] !== 0) {
             changeRel = changeAbs / history[0];
-        }
-        history.push(active);
-        if (history.length > limit) {
-            history.splice(0, 1);
         }
 
         body += `<p>Current: $${ns.formatNumber(active, 2)}/s`;

@@ -363,7 +363,7 @@ export const pricePurchaseOrder = (ns: MyNS, order: IPurchaseOrder[]) => {
 }
 
 const liquidateStocks = async (ns: MyNS) => {
-	await ns.kill("purchase-servers.js", "home");
+	ns.kill("purchase-servers.js", "home");
 	const processes = ns.ps("home").map(p => p.filename);
 	if (processes.includes("stocks.js")) {
 		const port = ns.getPortHandle(20); // See `stocks.js` for explanation of port 20
@@ -558,7 +558,7 @@ const currentActionUseful = (ns: MyNS, player: Player, factions: Map<string, num
 	return false;
 }
 
-const applyForPromotion = (ns: MyNS, player: Player, corp: string) => {
+const applyForPromotion = (ns: MyNS, player: Player, corp: string): boolean => {
 
 	const career = "it"
 
@@ -567,7 +567,7 @@ const applyForPromotion = (ns: MyNS, player: Player, corp: string) => {
 	if (success) {
 		ns.toast("Got a company promotion!");
 	}
-	ns.singularity.workForCompany(corp, ns.singularity.isFocused());
+	return ns.singularity.workForCompany(corp, ns.singularity.isFocused());
 }
 
 const chooseAction = (ns: MyNS, sleepTime: number, player: Player, factionsAll: Map<string,number>): number => {
