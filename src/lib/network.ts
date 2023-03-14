@@ -16,6 +16,24 @@ export function scanAll(ns: NS, host: string, servers: Set<string>) {
     }
 }
 
+export function findServer(ns: NS, target: string, start = "home", sofar: string[] = []): string[] {
+	const connectedHosts = ns.scan(start);
+	for (const host of connectedHosts) {
+		if (!sofar.includes(host)) {
+			sofar.push(host);
+			if (host == target) {
+				return sofar;
+			}
+            const newpath = findServer(ns, target, host, sofar);
+            if (newpath.length > 0) {
+                return newpath;
+            }
+            sofar.pop();
+		}
+	}
+    return [];
+}
+
 // scan all servers from home and nuke them if we can
 export function scanAndNuke(ns: NS) {
     const servers = new Set(["home"]);
