@@ -2,7 +2,7 @@
 // 117.30 GB
 import { CrimeStats, CrimeType, FactionWorkType, Player } from "@ns";
 import { BoxNode, MyNS } from "../MyTypes";
-import { createSidebarItem, sidebar } from "lib/box/box";
+import { createSidebarItem, sidebar, doc } from "lib/box/box";
 import { evaluateStocks } from "stocks.js";
 import { dumplog } from "lib/logs";
 import { seconds2string } from "lib/time";
@@ -94,11 +94,17 @@ export async function main(ns: MyNS): Promise<void> {
 const renderBoxes = (ns: MyNS, factionBox: BoxNode, playerBox: BoxNode): void => {
     // Factions
     let facBody = "";
-    const factionsForReputation = getFactionsForReputation(ns, ns.getPlayer());
-    for (const [name,] of factionsForReputation) {
+    const player = ns.getPlayer();
+    const factionsForReputation = getFactionsForReputation(ns, player);
+    for (const [name, repRemaining] of factionsForReputation) {
+        const gainRates = ns.formulas.work.factionGains(player, "hacking", ns.singularity.getFactionFavor(name));
+        // seems a cycle is .2 ms, so RepGainRate * 5 is gain per second
+        const reputationTimeRemaining = repRemaining / (gainRates.reputation * 5);
+        // ns.print("Reputation remaining: " + ns.formatNumber(repRemaining, 1) + " in " + seconds2string(ns, reputationTimeRemaining));
+
         const rep = ns.singularity.getFactionRep(name);
         const maxrep = maxAugmentRep(ns, name);
-        facBody += `<p>${name}</p><progress max="${maxrep}" value="${rep}">${ns.formatPercent(rep / maxrep, 2)}</progress>`;
+        facBody += `<p>${name} (Max in ~${seconds2string(ns, reputationTimeRemaining)})</p><progress max="${maxrep}" value="${rep}">${ns.formatPercent(rep / maxrep, 2)}</progress>`;
     }
     factionBox.body.innerHTML = facBody;
     factionBox.recalcHeight();
@@ -437,6 +443,13 @@ const reset = async (ns: MyNS, player: Player) => {
 	// do all the pre-reset stuff you want to do
 	await resetPrep(ns, player);
 	dumplog(ns, "actions", "playerActions.js");
+
+    // Kill everything and clear the sidebar (sometimes causes graphical glitches otherwise)
+    ns.killall("home", true);
+    if (sidebar !== null) {
+        doc.body.removeChild(sidebar);
+    }
+
 	// reset
 	if (ns.singularity.exportGameBonus()) {
 		ns.singularity.exportGame();

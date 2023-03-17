@@ -1,4 +1,7 @@
 import { NS } from "@ns";
+import { BoxNode } from "../MyTypes";
+import { sidebar, createSidebarItem/*, createBox*/ } from "lib/box/box";
+// import { seconds2string } from "./lib/time";
 
 // hack severs for this much of their money
 // the money ratio is increased and decreased automatically, starting with this value initially
@@ -29,10 +32,10 @@ const timeBetweenAttacks = timeDiff * 2.5; //500
 const slaveScriptRam = 1.75;
 
 // names of the slave scripts
-const weakenScriptName = "weaken.js";
-const growScriptName = "grow.js";
-const hackScriptName = "hack.js";
-const shareScriptName = "share.js";
+const weakenScriptName = "/helpers/weaken.js";
+const growScriptName = "/helpers/grow.js";
+const hackScriptName = "/helpers/hack.js";
+const shareScriptName = "/helpers/share.js";
 const shareScriptRam = 4;
 
 // list of slave script files
@@ -40,12 +43,12 @@ const files = [weakenScriptName, growScriptName, hackScriptName];
 
 // Backdoor script hooked in (requires singluarity functions SF4.1)
 const singularityFunctionsAvailable = true;
-const backdoorScript = "backdoor.js"
+const backdoorScript = "helpers/backdoor.js"
 const backdoorScriptRam = 5.8;
 
 // Solve Contract Script hooked in
-const solveContractsScript = "solveContracts.js";
-const solveContractsScriptRam = 23.3;
+const solveContractsScript = "contracts.js";
+const solveContractsScriptRam = 23.4;
 
 // global variable to track ongoing partial weak or grow attacks
 let partialWeakGrow: string | null = null; // do not change this
@@ -57,12 +60,34 @@ let partialAttacks = 1;
 const growThreadSecurityIncrease = 0.004;
 const hackThreadSecurityIncrease = 0.002;
 
-const profitsm = new Map();
+const profitsm = new Map<string,number>();
+
+/** Information needed to display information about an attack that was just launched */
+interface IAttack {
+    /** Target server */
+    target: string;
+    /** Timestamp of attack start time */
+    start: number;
+    /** Duration of the attack in milliseconds */
+    duration: number;
+    /** Total money expected to be returned by the attack */
+    money: number;
+    /** Money per second of the attack */
+    return: number;
+    /** Percent of server money being hacked */
+    percent: number;
+    /** Signals some sort of error occurred while launching this particular attack */
+    errors: boolean;
+}
+let attackList: IAttack[] = [];
 
 /** @param {NS} ns **/
 export async function main(ns: NS): Promise<void> {
     // Disable default Logging
     ns.disableLog("ALL");
+
+    const boxRam = createSidebarItem("RAM", "<p>Loading...</p>", "\ueabe") as BoxNode;
+    // const boxAttacks = createBox("Attacks", "<p>Loading...</p>", "\ueb01") as BoxNode;
 
     // automatically backdoor these servers. Requires singularity functions.
     const backdoorServers = new Set(["CSEC", "I.I.I.I", "avmnite-02h", "run4theh111z", "clarkinc", "nwo", "omnitek", "fulcrumtech", "fulcrumassets", "w0r1d_d43m0n"]);
@@ -99,6 +124,10 @@ export async function main(ns: NS): Promise<void> {
     let shareThreadIndex = 0;
 
     while (true) {
+        if ( (sidebar !== null) && (! sidebar.contains(boxRam)) ) {
+            ns.exit();
+        }
+
         // scan and nuke all accesible servers
         servers = await scanAndNuke(ns);
         // ns.print(`servers:${[...servers.values()]}`)
@@ -112,7 +141,7 @@ export async function main(ns: NS): Promise<void> {
             // modify singularityFunctionsAvailable at the top to de-/activate
             if (singularityFunctionsAvailable == true) {
                 for (const backdoorServer of backdoorServers.values()) {
-                    if ( (ns.fileExists("pragma_Stay.txt", "home")) && (backdoorServer.startsWith("w0")) ) {
+                    if ( (ns.fileExists("pragmas/Stay.txt", "home")) && (backdoorServer.startsWith("w0")) ) {
                         continue;
                     }
                     if (server == backdoorServer) {
@@ -134,6 +163,12 @@ export async function main(ns: NS): Promise<void> {
         // find servers with free RAM and calculate free RAM for each plus overall available RAM
         freeRams = getFreeRam(ns, servers);
         //ns.tprint(`freeRams:${freeRams.map(value => JSON.stringify(value))}`)
+        const body = `
+            <p>Free: ${ns.formatRam(freeRams.overallFreeRam, 2)} / ${ns.formatRam(freeRams.overallMaxRam, 2)}</p>
+            <progress max="${freeRams.overallMaxRam}" value="${freeRams.overallFreeRam}"></progress>
+        `;
+        boxRam.body.innerHTML = body;
+        boxRam.recalcHeight();
 
         // filter servers for those which we can hack and sort them
         targets = getHackable(ns, servers);
@@ -178,17 +213,17 @@ export async function main(ns: NS): Promise<void> {
         }
 
         // Hook for solve contracts script here if enough RAM is free.
-            const homeMaxRam = ns.getServerMaxRam("home");
-            const homeUsedRam = ns.getServerUsedRam("home")
-            const homeFreeRam = homeMaxRam - homeUsedRam;
-            if (homeFreeRam > solveContractsScriptRam) {
-                if (! ns.fileExists("pragma_NoContracts.txt", "home")) {
-                    // ns.print("INFO checking for contracts to solve");
-                    ns.exec(solveContractsScript, "home");
-                } else {
-                    ns.print(`WARN Contract checking disabled by pragma.`)
-                }
+        const homeMaxRam = ns.getServerMaxRam("home");
+        const homeUsedRam = ns.getServerUsedRam("home")
+        const homeFreeRam = homeMaxRam - homeUsedRam;
+        if (homeFreeRam > solveContractsScriptRam) {
+            if (! ns.fileExists("pragmas/NoContracts.txt", "home")) {
+                // ns.print("INFO checking for contracts to solve");
+                ns.exec(solveContractsScript, "home");
+            } else {
+                ns.print(`WARN Contract checking disabled by pragma.`)
             }
+        }
 
         if (moneyXpShare && hackMoneyRatio >= 0.99) {
             const maxRam = ns.getServerMaxRam("home");
@@ -215,6 +250,54 @@ export async function main(ns: NS): Promise<void> {
         }
 
         //ns.print("INFO RAM utilization: " + Math.round(ramUsage * 100) + " % ");
+
+        // Filter list of ongoing attacks
+        attackList = attackList.filter(a => a.start + a.duration > Date.now()).sort((a, b) => (a.start + a.duration) - (b.start + b.duration));
+        // // Update attack status
+        // let bodyAttacks = `
+        //     <table>
+        //         <thead>
+        //             <tr>
+        //                 <th>Target</th>
+        //                 <th>Countdown</th>
+        //                 <th>Remaining</th>
+        //                 <th>%</th>
+        //                 <th>Money</th>
+        //                 <th>RoR</th>
+        //             </tr>
+        //         </thead>
+        //         <tbody>
+        // `;
+        // for (const a of attackList) {
+        //     bodyAttacks += `
+        //             <tr>
+        //                 <td>${a.target}</td>
+        //     `;
+        //     if (a.start > Date.now()) {
+        //         const remaining = Math.round((a.start - Date.now()) / 1000);
+        //         bodyAttacks += `<td>${seconds2string(ns, remaining)}</td>`;
+        //     } else {
+        //         bodyAttacks += `<td>&nbsp;</td>`;
+        //     }
+        //     if ( (a.start <= Date.now()) && (a.start + a.duration > Date.now()) ) {
+        //         const remaining = Math.round(((a.start + a.duration) - Date.now()) / 1000);
+        //         bodyAttacks += `<td>${seconds2string(ns, remaining)}</td>`;
+        //     } else {
+        //         bodyAttacks += `<td>&nbsp;</td>`;
+        //     }
+        //     bodyAttacks += `
+        //                 <td>${ns.formatPercent(a.percent, 0)}</td>
+        //                 <td>${ns.formatNumber(a.money, 2)}</td>
+        //                 <td>${ns.formatNumber(a.return, 2)}/sec</td>
+        //             </tr>
+        //     `;
+        // }
+        // bodyAttacks += `
+        //         </tbody>
+        //     </table>
+        // `;
+        // boxAttacks.body.innerHTML = bodyAttacks;
+        // boxAttacks.recalcHeight();
 
         await ns.sleep(waitTimeBetweenManagementCycles);
     }
@@ -503,22 +586,38 @@ function manageAndHack(ns: NS, freeRams: IFreeRams, servers: Set<string>, target
             ns.print("INFO HCK stock " + target);
         }
 
+        let errors = false;
         for (let i = 0; i < parallelAttacks; i++) {
             if (hackThreads > 0) {
                 if (!findPlaceToRun(ns, hackScriptName, hackThreads, freeRams.serverRams, target, hackSleep, hackStock)) {
+                    errors = true;
                     ns.print("WARN Did not find a place to run hack " + target + " needs " + overallRamNeed)
                 }
             }
             if (weakThreads > 0) {
                 if (!findPlaceToRun(ns, weakenScriptName, weakThreads, freeRams.serverRams, target, weakSleep)) {
+                    errors = true;
                     ns.print("WARN Did not find a place to run weaken " + target + " needs " + overallRamNeed)
                 }
             }
             if (growThreads > 0) {
                 if (!findPlaceToRun(ns, growScriptName, growThreads, freeRams.serverRams, target, growSleep, growStock)) {
+                    errors = true;
                     ns.print("WARN Did not find a place to run grow " + target + " needs " + overallRamNeed)
                 }
             }
+
+            const attack: IAttack = {
+                target,
+                start: Date.now(),
+                duration: weakSleep + weakTime,
+                percent: maxPercentage,
+                money: money * maxPercentage,
+                return: money * maxPercentage * 60 / weakTime,
+                errors,
+            };
+            // ns.tprint(JSON.stringify(attack));
+            attackList.push(attack);
 
             weakSleep += timeBetweenAttacks;
             growSleep += timeBetweenAttacks;
@@ -613,7 +712,7 @@ function attackOngoing(ns: NS, servers: Set<string>, target: string) {
     for (const server of servers.values()) {
         for (let parallelAttack = 0; parallelAttack < maxParallelAttacks; parallelAttack++) {
             // we know the sleep time for weaken threads (not easy to obtain for grow and hack)
-            // checking for weak threads is sufficient to determine if attack is ongoing sonce they take longest
+            // checking for weak threads is sufficient to determine if attack is ongoing since they take longest
             // since weaken takes longest always and we always have weaken in our attacks, no weaken -> no attack ongoing
             weakSleep = parallelAttack * timeBetweenAttacks;
             const weakenRunning = ns.isRunning(weakenScriptName, server, target, weakSleep);
@@ -649,11 +748,25 @@ function xpAttackOngoing(ns: NS, servers: Set<string>, target: string, weakSleep
 // filter and sort the list for hackable servers
 function getHackable(ns: NS, servers: Set<string>): string[] {
 
-    const sortedServers = [...servers.values()].filter(server => ns.getServerMaxMoney(server) > 100000
+    const hackableServers = [...servers.values()].filter(server =>
+        ns.getServerMaxMoney(server) > 100000
         && ns.getServerRequiredHackingLevel(server) <= ns.getHackingLevel()
-        && ns.getServerGrowth(server) > 1 && server != "n00dles").sort((a, b) =>
-            profitsm["get"](b) - profitsm["get"](a))
-            // unnatural usage of "get" to avoid stanek.get RAM calculation bug
+        && ns.getServerGrowth(server) > 1 && server != "n00dles");
+
+    const sortedServers = [...hackableServers].sort((a, b) => {
+        // unnatural usage of "get" to avoid stanek.get RAM calculation bug
+        const profitB = profitsm["get"](b);
+        const profitA = profitsm["get"](a);
+        if ( (profitA !== undefined) && (profitB !== undefined) ) {
+            return profitB - profitA;
+        } else if (profitA !== undefined) {
+            return -1;
+        } else if (profitB !== undefined) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
 
     if (partialWeakGrow != null) {
         // prioritize a server which we have not initialized yet

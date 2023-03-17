@@ -55,15 +55,17 @@ export async function main(ns: NS): Promise<void> {
         // But upgrade the smallest servers first
         if (ownedPurchased.length > 0) {
             const smallestSize = Math.min(...ownedPurchased.map(s => ns.getServerMaxRam(s)));
-            const smallestOwned = ownedPurchased.filter(s => ns.getServerMaxRam(s) === smallestSize);
-            for (const server of smallestOwned) {
-                const cost = ns.getPurchasedServerUpgradeCost(server, ramTarget);
-                options.push({
-                    action: "upgrade",
-                    serverType: "purchased",
-                    serverIndex: server,
-                    cost
-                });
+            if (smallestSize < ramTarget) {
+                const smallestOwned = ownedPurchased.filter(s => ns.getServerMaxRam(s) === smallestSize);
+                for (const server of smallestOwned) {
+                    const cost = ns.getPurchasedServerUpgradeCost(server, ramTarget);
+                    options.push({
+                        action: "upgrade",
+                        serverType: "purchased",
+                        serverIndex: server,
+                        cost
+                    });
+                }
             }
         }
         // Buy a new hacknet server
@@ -181,6 +183,9 @@ export async function main(ns: NS): Promise<void> {
 		await ns.sleep(5 * 1000);
 	}
 	ns.tprint("All purchased servers at maximum RAM. Exiting script.");
+    if (sidebar !== null) {
+        sidebar.removeChild(box);
+    }
 }
 
 const renderTail = (ns: NS, box: BoxNode, cheapest: IOption | undefined): void => {

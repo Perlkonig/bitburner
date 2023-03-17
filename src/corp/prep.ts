@@ -41,7 +41,7 @@ export async function main(ns: NS): Promise<void> {
             body += `<span style="color: red">$${ns.formatNumber(profit, 2)}/s</span>`
         }
         body += `</p>`;
-        body += `<p>Development: ${totaldev}</p>`;
+        body += `<p>Development: ${ns.formatNumber(totaldev, 2)}</p>`;
         body += `<progress max="300" value="${totaldev}"></progress>`
 
         box.body.innerHTML = body;

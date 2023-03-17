@@ -3,7 +3,7 @@ import { listServers } from "lib/network"
 
 /** @param {NS} ns */
 export async function main(ns: NS): Promise<void> {
-    if (ns.fileExists("pragma_NoContracts.txt", "home")) {
+    if (ns.fileExists("/pragma/NoContracts.txt", "home")) {
         ns.print(`WARN Contract solver suspended by pragma.`);
         ns.exit();
     }
