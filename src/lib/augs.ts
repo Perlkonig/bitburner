@@ -202,14 +202,14 @@ export const priceOrder = (order: IPurchaseOrder[]): number => {
     return cost;
 }
 
-export const countNfgs = (ns: NS): [string, number, number] => {
+export const countNfgs = (ns: NS, money?: number): [string, number, number] => {
     // get non-gang faction with highest reputation
     let factions = ns.getPlayer().factions;
     if (ns.gang.inGang()) {
         const gang = ns.gang.getGangInformation();
         factions = factions.filter(f => f !== gang.faction)
     }
-    const withrep: [string,number][] = factions.map(f => [f, ns.singularity.getFactionRep(f)]) ;
+    const withrep: [string,number][] = factions.map(f => [f, ns.singularity.getFactionRep(f)]);
     withrep.sort((a, b) => b[1] - a[1]);
     const [faction ,currRep] = withrep[0];
 
@@ -218,7 +218,9 @@ export const countNfgs = (ns: NS): [string, number, number] => {
     let cost = 0;
     let price = ns.singularity.getAugmentationPrice("NeuroFlux Governor");
     let repreq = ns.singularity.getAugmentationRepReq("NeuroFlux Governor");
-    const money = ns.getServerMoneyAvailable("home");
+    if (money === undefined) {
+        money = ns.getServerMoneyAvailable("home");
+    }
     while ( (repreq <= currRep) && (cost + price <= money) ) {
         num++;
         cost += price;
