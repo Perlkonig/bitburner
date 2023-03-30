@@ -70,7 +70,8 @@ export async function main(ns: NS): Promise<void> {
 	ns.corporation.expandIndustry("Healthcare", "Healthcare");
 	await initCities(ns, ns.corporation.getDivision("Healthcare"));
 
-    ns.tprint("Trick complete and new division configured. Start managing!");
+    ns.tprint("Trick complete and new division configured. Starting the management script.");
+    ns.exec("/corp/manage.js", "home");
 }
 
 async function initCities(ns: NS, division: Division, productCity: CityName = "Sector-12" as CityName) {

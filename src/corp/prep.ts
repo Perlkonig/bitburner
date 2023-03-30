@@ -16,8 +16,7 @@ export async function main(ns: NS): Promise<void> {
     const box: BoxNode = createSidebarItem("Prep Corp", "<p>Loading...</p>", "\ueb07") as BoxNode;
 
     const division = ns.corporation.getDivision("Tobacco");
-    const product3 = ns.corporation.getProduct("Tobacco", division.products[2]);
-    while (product3.developmentProgress < 100) {
+    while (ns.corporation.getProduct("Tobacco", division.products[2]).developmentProgress < 100) {
         let totaldev = 0;
         for (const product of division.products) {
             totaldev += ns.corporation.getProduct("Tobacco", product).developmentProgress;
@@ -115,5 +114,6 @@ export async function main(ns: NS): Promise<void> {
     }
 	ns.tprint("Warehouses are full. Ready to trick investors!");
     ns.toast("Warehouses are full. Ready to trick investors!", "success", null);
+    ns.singularity.exportGame();
 }
 

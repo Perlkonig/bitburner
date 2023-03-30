@@ -23,7 +23,8 @@ export async function main(ns: NS): Promise<void> {
     const division = ns.corporation.getDivision("Tobacco");
     await initCities(ns, division);
 
-    ns.tprint("Initial corp setup complete. Start prepping.");
+    ns.tprint("Initial corp setup complete. Starting the prep script.");
+    ns.exec("/corp/prep.js", "home");
 }
 
 function initialCorpUpgrade(ns: NS) {

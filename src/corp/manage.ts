@@ -92,7 +92,7 @@ function manageShares(ns: NS): void {
     const money = ns.getServerMoneyAvailable("home");
     if (corp.numShares < corp.totalShares) {
         ns.corporation.issueDividends(1);
-        if ( (corp.sharePrice < 100) && (money > corp.sharePrice * (corp.totalShares - corp.numShares) * 2) ) {
+        if ( ( (corp.sharePrice < 100) && (money > corp.sharePrice * (corp.totalShares - corp.numShares) * 2) ) || (money * 0.1 > corp.sharePrice * (corp.totalShares - corp.numShares)) ) {
             ns.toast("Buying back shares", "success", null);
             ns.corporation.buyBackShares(corp.totalShares - corp.numShares);
             ns.corporation.issueDividends(.5);
@@ -130,7 +130,9 @@ function hireEmployees(ns: NS, division: Division, productCity: CityName = "Sect
 					ns.corporation.setAutoJobAssignment(division.name, city, "Business", Math.ceil(employees / 5));
 					ns.corporation.setAutoJobAssignment(division.name, city, "Management", Math.ceil(employees / 10));
 					const remainingEmployees = employees - (3 * Math.ceil(employees / 5) + Math.ceil(employees / 10));
-					ns.corporation.setAutoJobAssignment(division.name, city, "Training", Math.ceil(remainingEmployees));
+					// ns.corporation.setAutoJobAssignment(division.name, city, "Training", Math.ceil(remainingEmployees));
+                    ns.corporation.setAutoJobAssignment(division.name, city, "Research & Development", Math.ceil(remainingEmployees));
+
 				}
 				else {
 					ns.corporation.setAutoJobAssignment(division.name, city, "Operations", Math.floor(employees / 10));
@@ -139,7 +141,8 @@ function hireEmployees(ns: NS, division: Division, productCity: CityName = "Sect
 					ns.corporation.setAutoJobAssignment(division.name, city, "Management", Math.ceil(employees / 100));
 					ns.corporation.setAutoJobAssignment(division.name, city, "Research & Development", Math.ceil(employees / 2));
 					const remainingEmployees = employees - (Math.floor(employees / 5) + Math.floor(employees / 10) + 1 + Math.ceil(employees / 100) + Math.ceil(employees / 2));
-					ns.corporation.setAutoJobAssignment(division.name, city, "Training", Math.floor(remainingEmployees));
+					// ns.corporation.setAutoJobAssignment(division.name, city, "Training", Math.floor(remainingEmployees));
+					ns.corporation.setAutoJobAssignment(division.name, city, "Research & Development", Math.ceil(employees / 2) + remainingEmployees);
 				}
 			}
 			else {
