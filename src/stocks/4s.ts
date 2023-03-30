@@ -1,25 +1,7 @@
 import { NS } from "@ns";
-import { IPriceHistory } from "./daemon";
 import { sidebar, createSidebarItem } from "lib/box/box";
 import { BoxNode } from "../../MyTypes";
-import { getVolatility, getForecast } from "stocks/lib";
-
-interface IHolding {
-    sym: string;
-    longShares: number;
-    longPrice: number;
-    shortShares: number;
-    shortPrice: number;
-    forecast: number;
-    volatility: number;
-    askPrice: number;
-    bidPrice: number;
-    maxShares: number;
-    cost: number;
-    profit: number;
-    profitPotential: number;
-    summary: string;
-}
+import { getAllStocks, commission } from "lib/stocks";
 
 /** Map of symbols to servers; also serves as hard-coded list of symbols */
 const symServer: {[k: string]: string} = {
@@ -58,20 +40,26 @@ const symServer: {[k: string]: string} = {
 	"FNS": "foodnstuff"
 }
 
-const commission = 100000;
+
 const reserve = 500 * commission;
 const sleepTime = 6;
-const shortAvailable = false;
+const shortAvailable = true;
 let overallProfit = 0;
 let overallValue = 0;
 let globalSpent = 0;
 let globalCashed = 0;
+let firstAmt = 0;
+let firstTime = 0;
 
 /** @param {NS} ns **/
 export async function main(ns: NS): Promise<void> {
     // Disable default Logging
     ns.disableLog("ALL");
 
+    globalSpent = 0;
+    globalCashed = 0;
+    firstAmt = ns.getServerMoneyAvailable("home");
+    firstTime = Date.now();
     const box: BoxNode = createSidebarItem("Stocks", "<p>Loading...</p>", "\ueb03") as BoxNode;
 
     while (true) {
@@ -113,7 +101,20 @@ const renderBox = (ns: NS, box: BoxNode): void => {
         if (globalSpent > 0) {
             ror = (globalCashed + overallValue - globalSpent) / globalSpent;
         }
-        body += `<p>Overall RoR: ${ns.formatPercent(ror, 2)}</p>`;
+        if (ror <= 0) {
+            body += `<p style="color: red">Overall RoR: ${ns.formatPercent(ror, 2)}</p>`;
+        } else {
+            body += `<p style="color: green">Overall RoR: ${ns.formatPercent(ror, 2)}</p>`;
+        }
+
+        if (firstAmt !== 0) {
+            const delta = ns.getServerMoneyAvailable("home") + overallValue - firstAmt;
+            const pc = delta / firstAmt;
+            const time = (Date.now() - firstTime) / 1000;
+            const persec = delta / time;
+            body += `<p>Session: $${ns.formatNumber(delta, 2)} (${ns.formatPercent(pc, 2)})</p>`;
+            body += `<p>$${ns.formatNumber(persec, 2)}/sec</p>`;
+        }
     }
 
     box.body.innerHTML = body;
@@ -122,10 +123,10 @@ const renderBox = (ns: NS, box: BoxNode): void => {
 
 // Used to throttle the amount of total money spent on stocks in any given tick
 const getSpendingMoney = (ns: NS) => {
-    let factor = 0.5;
+    let factor = 1;
     const processes = ns.ps("home").map(p => p.filename);
     if (processes.includes("purchase-servers.js")) {
-        factor = 0.25;
+        factor = 0.5;
     }
     return ns.getServerMoneyAvailable("home") * factor;
 }
@@ -151,7 +152,7 @@ const tendStocks = async (ns: NS): Promise<void> => {
             else {
                 const salePrice = ns.stock.sellStock(stock.sym, stock.longShares);
                 const saleTotal = salePrice * stock.longShares;
-                globalCashed += saleTotal;
+                globalCashed += saleTotal - commission;
                 const saleCost = stock.longPrice * stock.longShares;
                 const saleProfit = saleTotal - saleCost - 2 * commission;
                 // globalProfit += saleProfit;
@@ -170,7 +171,7 @@ const tendStocks = async (ns: NS): Promise<void> => {
             else {
                 const salePrice = ns.stock.sellShort(stock.sym, stock.shortShares);
                 const saleTotal = salePrice * stock.shortShares;
-                globalCashed += saleTotal;
+                globalCashed += saleTotal - commission;
                 const saleCost = stock.shortPrice * stock.shortShares;
                 const saleProfit = saleTotal - saleCost - 2 * commission;
                 // globalProfit += saleProfit;
@@ -224,62 +225,3 @@ const tendStocks = async (ns: NS): Promise<void> => {
     }
 }
 
-const getAllStocks = async (ns: NS): Promise<IHolding[]> => {
-    let history: IPriceHistory = {};
-    if (!ns.stock.has4SData() || !ns.stock.has4SDataTIXAPI()) {
-        // get latest price information
-        const handle = ns.getPortHandle(4);
-        while (handle.empty()) {
-            await ns.sleep(200);
-        }
-        history = JSON.parse(handle.read() as string);
-    }
-
-    // make a lookup table of all stocks and all their properties
-    const stockSymbols = Object.keys(symServer);
-    const stocks: IHolding[] = [];
-    for (const sym of stockSymbols) {
-
-        let forecast = 0;
-        let volatility = 0;
-        if (ns.stock.has4SData() && ns.stock.has4SDataTIXAPI()) {
-            forecast = ns.stock.getForecast(sym);
-            volatility = ns.stock.getVolatility(sym);
-        } else {
-            forecast = getForecast(history[sym]);
-            volatility = getVolatility(history[sym]);
-        }
-
-        const pos = ns.stock.getPosition(sym);
-        const stock: IHolding = {
-            sym: sym,
-            longShares: pos[0],
-            longPrice: pos[1],
-            shortShares: pos[2],
-            shortPrice: pos[3],
-            forecast,
-            volatility,
-            askPrice: ns.stock.getAskPrice(sym),
-            bidPrice: ns.stock.getBidPrice(sym),
-            maxShares: ns.stock.getMaxShares(sym),
-            cost: 0,
-            profit: 0,
-            profitPotential: 0,
-            summary: ""
-        };
-
-        const longProfit = stock.longShares * (stock.bidPrice - stock.longPrice) - 2 * commission;
-        const shortProfit = stock.shortShares * (stock.shortPrice - stock.askPrice) - 2 * commission;
-        stock.profit = longProfit + shortProfit;
-        stock.cost = (stock.longShares * stock.longPrice) + (stock.shortShares * stock.shortPrice)
-
-        // profit potential as chance for profit * effect of profit
-        const profitChance = 2 * Math.abs(stock.forecast - 0.5);
-        const profitPotential = profitChance * (stock.volatility);
-        stock.profitPotential = profitPotential;
-
-        stock.summary = `${stock.sym}: ${stock.forecast.toFixed(3)} ± ${stock.volatility.toFixed(3)}`;
-        stocks.push(stock);
-    }
-    return stocks;
-}

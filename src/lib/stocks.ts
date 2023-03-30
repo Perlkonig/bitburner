@@ -1,3 +1,112 @@
+import { NS } from "@ns";
+// import { IPriceHistory } from "../stocks/daemon";
+
+export interface IHolding {
+    sym: string;
+    longShares: number;
+    longPrice: number;
+    shortShares: number;
+    shortPrice: number;
+    forecast: number;
+    volatility: number;
+    askPrice: number;
+    bidPrice: number;
+    maxShares: number;
+    cost: number;
+    profit: number;
+    profitPotential: number;
+    summary: string;
+}
+
+/** Map of symbols to servers; also serves as hard-coded list of symbols */
+const symServer: {[k: string]: string} = {
+	"WDS": "",
+	"ECP": "ecorp",
+	"MGCP": "megacorp",
+	"BLD": "blade",
+	"CLRK": "clarkinc",
+	"OMTK": "omnitek",
+	"FSIG": "4sigma",
+	"KGI": "kuai-gong",
+	"DCOMM": "defcomm",
+	"VITA": "vitalife",
+	"ICRS": "icarus",
+	"UNV": "univ-energy",
+	"AERO": "aerocorp",
+	"SLRS": "solaris",
+	"GPH": "global-pharm",
+	"NVMD": "nova-med",
+	"LXO": "lexo-corp",
+	"RHOC": "rho-construction",
+	"APHE": "alpha-ent",
+	"SYSC": "syscore",
+	"CTK": "comptek",
+	"NTLK": "netlink",
+	"OMGA": "omega-net",
+	"JGN": "joesguns",
+	"SGC": "sigma-cosmetics",
+	"CTYS": "catalyst",
+	"MDYN": "microdyne",
+	"TITN": "titan-labs",
+	"FLCM": "fulcrumtech",
+	"STM": "stormtech",
+	"HLS": "helios",
+	"OMN": "omnia",
+	"FNS": "foodnstuff"
+}
+
+export const commission = 100000;
+
+export const getAllStocks = async (ns: NS): Promise<IHolding[]> => {
+    // make a lookup table of all stocks and all their properties
+    const stockSymbols = Object.keys(symServer);
+    const stocks: IHolding[] = [];
+    for (const sym of stockSymbols) {
+
+        let forecast = 0;
+        let volatility = 0;
+        if (ns.stock.has4SData() && ns.stock.has4SDataTIXAPI()) {
+            forecast = ns.stock.getForecast(sym);
+            volatility = ns.stock.getVolatility(sym);
+        // } else {
+        //     forecast = getForecast(history[sym]);
+        //     volatility = getVolatility(history[sym]);
+        }
+
+        const pos = ns.stock.getPosition(sym);
+        const stock: IHolding = {
+            sym: sym,
+            longShares: pos[0],
+            longPrice: pos[1],
+            shortShares: pos[2],
+            shortPrice: pos[3],
+            forecast,
+            volatility,
+            askPrice: ns.stock.getAskPrice(sym),
+            bidPrice: ns.stock.getBidPrice(sym),
+            maxShares: ns.stock.getMaxShares(sym),
+            cost: 0,
+            profit: 0,
+            profitPotential: 0,
+            summary: ""
+        };
+
+        const longProfit = stock.longShares * (stock.bidPrice - stock.longPrice) - 2 * commission;
+        const shortProfit = stock.shortShares * (stock.shortPrice - stock.askPrice) - 2 * commission;
+        stock.profit = longProfit + shortProfit;
+        stock.cost = (stock.longShares * stock.longPrice) + (stock.shortShares * stock.shortPrice)
+
+        // profit potential as chance for profit * effect of profit
+        const profitChance = 2 * Math.abs(stock.forecast - 0.5);
+        const profitPotential = profitChance * (stock.volatility);
+        stock.profitPotential = profitPotential;
+
+        stock.summary = `${stock.sym}: ${stock.forecast.toFixed(3)} ± ${stock.volatility.toFixed(3)}`;
+        stocks.push(stock);
+    }
+    return stocks;
+}
+
 export const getVolatility = (lst: number[], p = 14): number => {
     // Must have a minimum number of entries to calculate
     if (lst.length < p) {
