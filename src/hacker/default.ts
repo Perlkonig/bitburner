@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { BoxNode } from "../MyTypes";
+import { BoxNode } from "../../MyTypes";
 import { sidebar, createSidebarItem/*, createBox*/ } from "lib/box/box";
 // import { seconds2string } from "./lib/time";
 
@@ -141,7 +141,7 @@ export async function main(ns: NS): Promise<void> {
             // modify singularityFunctionsAvailable at the top to de-/activate
             if (singularityFunctionsAvailable == true) {
                 for (const backdoorServer of backdoorServers.values()) {
-                    if ( (ns.fileExists("pragmas/Stay.txt", "home")) && (backdoorServer.startsWith("w0")) ) {
+                    if ( (ns.fileExists("/pragmas/Stay.txt", "home")) && (backdoorServer.startsWith("w0")) ) {
                         continue;
                     }
                     if (server == backdoorServer) {
@@ -217,7 +217,7 @@ export async function main(ns: NS): Promise<void> {
         const homeUsedRam = ns.getServerUsedRam("home")
         const homeFreeRam = homeMaxRam - homeUsedRam;
         if (homeFreeRam > solveContractsScriptRam) {
-            if (! ns.fileExists("pragmas/NoContracts.txt", "home")) {
+            if (! ns.fileExists("/pragmas/NoContracts.txt", "home")) {
                 // ns.print("INFO checking for contracts to solve");
                 ns.exec(solveContractsScript, "home");
             } else {
@@ -318,6 +318,11 @@ function manageAndHack(ns: NS, freeRams: IFreeRams, servers: Set<string>, target
         let addedGrowSecurity = 0;
         let addedHackSecurity = 0;
         let money = ns.getServerMoneyAvailable(target);
+        if (money < 1) {
+            // ensure money > 0 to prevent division by zero or hackAnalyze zero
+            // just in case a server was 100% hacked with no money left
+            money = 1;
+        }
         const maxMoney = ns.getServerMaxMoney(target);
         let weakThreads = 0;
         let growThreads = 0;
@@ -330,12 +335,6 @@ function manageAndHack(ns: NS, freeRams: IFreeRams, servers: Set<string>, target
 
         if (secDiff < 0.5) {
             // server is near min security. Go ahead with grow or hack.
-
-            if (money < 1) {
-                // ensure money > 0 to prevent division by zero or hackAnalyze zero
-                // just in case a server was 100% hacked with no money left
-                money = 1;
-            }
 
             // hack if near max money (no substantial growth needed)
             if (initialGrowRatio < 1.1) {
@@ -366,7 +365,12 @@ function manageAndHack(ns: NS, freeRams: IFreeRams, servers: Set<string>, target
             // Considering 0 cores on all serers.
             // The last parameter 0 can be removed if optimizing for running slave threads on home server with > 0 cores only
             // else, grow threads onother servers than home will not grow sufficiently and break perfect attack chains
-            growThreads = Math.ceil((ns.growthAnalyze(target, overallGrowRatio))); // zero at end
+            try {
+                growThreads = Math.ceil(ns.growthAnalyze(target, overallGrowRatio)); // zero at end
+            } catch (e) {
+                ns.print(`ERROR Failed to calculate grow threads for target ${target}. Skipping attack.`);
+                continue;
+            }
 
             addedGrowSecurity = growThreads * growThreadSecurityIncrease;
         }
