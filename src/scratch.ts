@@ -1,13 +1,13 @@
 import { MyNS } from "../MyTypes";
-import { wng } from "lib/names";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function main(ns: MyNS): Promise<void> {
-    let num = 5;
-    if (ns.args.length > 0) {
-        num = ns.args[0] as number;
+    const skills: [string,number][] = [];
+    for (const skill of ns.bladeburner.getSkillNames()) {
+        const lvl = ns.bladeburner.getSkillLevel(skill);
+        skills.push([skill, lvl]);
     }
-    for (let i = 0; i < num; i++) {
-        ns.tprint(wng());
-    }
+    skills.sort((a, b) => b[1] - a[1]);
+    ns.tprint(JSON.stringify(skills, null, 2));
 }
+

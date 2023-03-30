@@ -244,12 +244,18 @@ function taskValue(ns: NS, gangInfo: GangGenInfo, member: string, task: string) 
 		moneyGain *= 0.75;
 	}
 
-	if (ns.getServerMoneyAvailable("home") > 10e12) {
-		// if we got all augmentations, money from gangs is probably not relevant anymore; so focus on respect
-		// set money gain at least to respect gain in case of low money gain tasks like terrorism
-		moneyGain /= 100; // compare money to respect gain value; give respect more priority
-		moneyGain = Math.max(moneyGain, respectGain);
-	}
+    if (ns.getPlayer().bitNodeN === 8) {
+        moneyGain /= 100;
+        moneyGain = Math.max(moneyGain, respectGain);
+    }
+
+    // ns.singularity.getFactionRep(gangInfo.faction) > 2500000
+	// if (ns.getServerMoneyAvailable("home") > 10e12) {
+	// 	// if we got all augmentations, money from gangs is probably not relevant anymore; so focus on respect
+	// 	// set money gain at least to respect gain in case of low money gain tasks like terrorism
+	// 	moneyGain /= 100; // compare money to respect gain value; give respect more priority
+	// 	moneyGain = Math.max(moneyGain, respectGain);
+	// }
 
 	// return a value based on money gain and respect gain
 	return respectGain * moneyGain;
