@@ -59,11 +59,15 @@ interface IPurchaseOrder {
     repreq: number;
 }
 
+const ignoreAugs = new Set<string>([
+    "Neuroreceptor Management Implant",
+]);
+
 export const COST_MULT = 1.9;
 export const NFG_MULT = 1.14;
 
 export const getAugs = (ns: NS): IAugCategories => {
-    const augs: IAug[] = [];
+    let augs: IAug[] = [];
     for (const faction of Object.values(FactionNames)) {
         for (const aug of ns.singularity.getAugmentationsFromFaction(faction)) {
             const price = ns.singularity.getAugmentationPrice(aug);
@@ -84,6 +88,9 @@ export const getAugs = (ns: NS): IAugCategories => {
             augs.push(node);
         }
     }
+    // Delete augs we never want to buy
+    augs = augs.filter(x => ! ignoreAugs.has(x.name));
+
     const cats: IAugCategories = {};
     // specials
     cats["specials"] = augs.filter(x => isSpecial(x.mults));
@@ -120,7 +127,7 @@ const isSpecial = (mults: Multipliers): boolean => {
     return true;
 }
 
-export const assess = (ns: NS, sequence = ["specials", "bb", "facrep", "combat", "hackingXp", "hackingOther"], costLimit = true): IPurchaseOrder[] => {
+export const assess = (ns: NS, sequence = ["specials", "bb", "facrep", "combat", "hackingXp", "hackingOther"], costLimit = true, effMult = COST_MULT): IPurchaseOrder[] => {
     const augs = getAugs(ns);
     let order: IPurchaseOrder[] = [];
     for (const cat of sequence) {
@@ -128,10 +135,10 @@ export const assess = (ns: NS, sequence = ["specials", "bb", "facrep", "combat",
             ns.tprint(`ERROR No category found with the name ${cat}!`);
             break;
         }
-        const haverep = augs[cat].filter(x => x.repreq <= ns.singularity.getFactionRep(x.faction)).sort((a, b) => b.price - a.price);
+        const haverep = augs[cat].filter(x => (ns.getPlayer().factions.includes(x.faction)) && (x.repreq <= ns.singularity.getFactionRep(x.faction))).sort((a, b) => b.price - a.price);
         for (const aug of haverep) {
             const neworder = addToOrder(ns, [...order], aug, augs);
-            const cost = priceOrder(neworder)
+            const [cost,] = priceOrder(neworder, effMult);
             if (costLimit) {
                 if (ns.getServerMoneyAvailable("home") >= cost) {
                     order = neworder;
@@ -184,7 +191,7 @@ const addToOrder = (ns: NS, order: IPurchaseOrder[], aug: IAug, allAugs: IAugCat
 }
 
 // Assumes NFGs are always purchased at the very end, in one go
-export const priceOrder = (order: IPurchaseOrder[]): number => {
+export const priceOrder = (order: IPurchaseOrder[], effCostMult = COST_MULT): [number, number] => {
     let cost = 0;
     let costMult = 1;
     let nfgMult = 1;
@@ -192,22 +199,25 @@ export const priceOrder = (order: IPurchaseOrder[]): number => {
         // NFGs are handled differently
         if (aug.name === "NeuroFlux Governor") {
             cost += aug.price * costMult * nfgMult;
-            costMult *= COST_MULT;
+            costMult *= effCostMult;
             nfgMult *= NFG_MULT;
         } else {
             cost += aug.price * costMult;
-            costMult *= COST_MULT;
+            costMult *= effCostMult;
         }
     }
-    return cost;
+    return [cost, costMult];
 }
 
-export const countNfgs = (ns: NS, money?: number): [string, number, number] => {
+export const countNfgs = (ns: NS, effCostMult = COST_MULT, money?: number, startMult?: number): [string, number, number] => {
     // get non-gang faction with highest reputation
     let factions = ns.getPlayer().factions;
     if (ns.gang.inGang()) {
         const gang = ns.gang.getGangInformation();
         factions = factions.filter(f => f !== gang.faction)
+    }
+    if (ns.bladeburner.inBladeburner()) {
+        factions = factions.filter(f => f !== "Bladeburners");
     }
     const withrep: [string,number][] = factions.map(f => [f, ns.singularity.getFactionRep(f)]);
     withrep.sort((a, b) => b[1] - a[1]);
@@ -217,6 +227,9 @@ export const countNfgs = (ns: NS, money?: number): [string, number, number] => {
     let num = 0;
     let cost = 0;
     let price = ns.singularity.getAugmentationPrice("NeuroFlux Governor");
+    if (startMult !== undefined) {
+        price *= startMult;
+    }
     let repreq = ns.singularity.getAugmentationRepReq("NeuroFlux Governor");
     if (money === undefined) {
         money = ns.getServerMoneyAvailable("home");
@@ -224,7 +237,7 @@ export const countNfgs = (ns: NS, money?: number): [string, number, number] => {
     while ( (repreq <= currRep) && (cost + price <= money) ) {
         num++;
         cost += price;
-        price *= COST_MULT * NFG_MULT;
+        price *= effCostMult * NFG_MULT;
         repreq *= NFG_MULT;
     }
 

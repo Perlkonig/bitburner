@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { assess, getAugs, priceOrder, countNfgs } from "lib/augs";
+import { assess, getAugs, priceOrder, countNfgs, COST_MULT } from "lib/augs";
 import { parseArgs } from "lib/cmd";
 
 /**
@@ -13,6 +13,7 @@ import { parseArgs } from "lib/cmd";
 /** @param {NS} ns */
 export async function main(ns: NS): Promise<void> {
     const [raw, flags] = parseArgs(ns);
+    const effCostMult = realCostMult(ns);
     const allAugs = getAugs(ns);
     let sequence = ["specials", "bb", "facrep", "combat"];
     if (raw.length > 0) {
@@ -27,10 +28,10 @@ export async function main(ns: NS): Promise<void> {
         }
     }
     let costLimit = false;
-    if (flags.has("afford")) {
+    if ( (flags.has("afford")) || (flags.has("nfgs")) || (flags.has("buy")) ) {
         costLimit = true;
     }
-    let order = assess(ns, sequence, costLimit);
+    let order = assess(ns, sequence, costLimit, effCostMult);
     if (flags.has("limit")) {
         const limit = flags.get("limit");
         if ( (limit !== undefined) && (limit !== null) ) {
@@ -44,7 +45,7 @@ export async function main(ns: NS): Promise<void> {
         }
     }
 
-    const price = priceOrder(order);
+    const [price, mult] = priceOrder(order, effCostMult);
     ns.tprint(`Sequence: ${sequence.join(", ")}`);
     ns.tprint(JSON.stringify(order, null, 2));
     ns.tprint(`Total augs: ${order.length}`);
@@ -53,7 +54,7 @@ export async function main(ns: NS): Promise<void> {
     let nfgCost = 0;
     let nfgNum = 0;
     if (flags.has("nfgs")) {
-        const [faction, num, cost] = countNfgs(ns, ns.getServerMoneyAvailable("home") - price);
+        const [faction, num, cost] = countNfgs(ns, effCostMult, ns.getServerMoneyAvailable("home") - price, mult);
         nfgCost = cost;
         nfgNum = num;
         ns.tprint(`Could then purchase ${num} NFGs from ${faction} for $${ns.formatNumber(cost, 2)}`)
@@ -86,3 +87,14 @@ export async function main(ns: NS): Promise<void> {
     }
 }
 
+export const realCostMult = (ns: NS): number => {
+    const srcs = ns.singularity.getOwnedSourceFiles();
+    const eleven = srcs.filter(x => x.n === 11)[0];
+    if (eleven !== undefined) {
+        const eff = COST_MULT * [1, 0.96, 0.94, 0.93][eleven.lvl];
+        ns.tprint(`Effective cost multiplier: ${eff}`);
+        return eff;
+    } else {
+        return COST_MULT;
+    }
+}
