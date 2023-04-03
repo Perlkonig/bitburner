@@ -2,6 +2,8 @@ import { MyNS } from "../MyTypes";
 import { CrimeType } from "@ns";
 import { maxKarma, maxMoney, maxStats } from "lib/crime";
 
+const crimes = ["Shoplift", "RobStore", "Mug", "Larceny", "Deal Drugs", "Bond Forgery", "Traffick Arms", "Homicide", "Grand Theft Auto", "Kidnap", "Assassination", "Heist"];
+const stats = ["Strength", "Dexterity", "Defense", "Agility"];
 const karmaTarget = 54000;
 
 /** @param {NS} ns */
@@ -24,9 +26,17 @@ export async function main(ns: MyNS): Promise<void> {
                 } else {
                     ns.sleeve.setToGymWorkout(i, "Powerhouse Gym", "Defense");
                 }
+            } else if (crimes.includes(ns.args[0] as string)) {
+                ns.sleeve.setToCommitCrime(i, ns.args[0] as CrimeType);
+            } else if (ns.args[0] === "shock") {
+                ns.sleeve.setToShockRecovery(i);
+            } else if (ns.args[0] === "sync") {
+                ns.sleeve.setToSynchronize(i);
+            } else if (stats.includes(ns.args[0] as string)) {
+                ns.sleeve.setToGymWorkout(i, "Powerhouse Gym", ns.args[0] as string);
             }
         } else if (! ns.bladeburner.inBladeburner()) {
-            const crime = maxStats(ns, ns.sleeve.getSleeve(i));
+            const crime = maxStats(ns, ns.sleeve.getSleeve(i), 100);
             ns.sleeve.setToCommitCrime(i, crime.type as CrimeType);
             ns.tprint(`Setting sleeve #${i + 1} to crime ${crime.type} to maximize stats.`);
             // ns.sleeve.setToCommitCrime(i, "Mug");
