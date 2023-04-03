@@ -11,7 +11,7 @@ const actionsBlackOps = ["Operation Typhoon","Operation Zero","Operation X","Ope
 
 const skillPriority = new Map<string, number>([
     // Tracer is a 1 just because it should be levelled early,
-    // but it's capped at 10 levels
+    // but it's capped
     ["Tracer", 1],
     ["Blade's Intuition", 1],
     ["Digital Observer", 1],
@@ -20,20 +20,21 @@ const skillPriority = new Map<string, number>([
     ["Cloak", 1.25],
     ["Short-Circuit", 1.25],
     ["Overclock", 1.25],
-    ["Hyperdrive", 2],
+    ["Hyperdrive", 1.25],
 ]);
 
 const skillCaps = new Map<string, number>([
+    ["Tracer", 5],
     ["Cloak", 25],
     ["Short-Circuit", 25],
-    ["Tracer", 10],
-    ["Hyperdrive", 20],
+    ["Overclock", 90],
+    // ["Hyperdrive", 20],
 ]);
 
 const lowStaminaThresh = 0.5;
-const highStaminaThresh = 0.8;
+const highStaminaThresh = 0.99;
 const lowHPThresh = 0; //0.2;
-const highHPThresh = 0.8;
+const highHPThresh = 0; //0.8;
 
 // /** @param {NS} ns **/
 // export async function main(ns: NS): Promise<void> {
@@ -92,7 +93,18 @@ const chooseCity = (ns: NS): void => {
                 msgs.push(`ERROR Failed to move to the city ${pops[0]}.`);
             }
         } else {
-            ns.toast("There are no cities with a population greater than 1 billion!", "warning", null);
+            const largest = cities.sort((a, b) => ns.bladeburner.getCityEstimatedPopulation(b as CityName) - ns.bladeburner.getCityEstimatedPopulation(a as CityName))[0];
+            if (largest !== city) {
+                const success = ns.bladeburner.switchCity(largest as CityName);
+                if (success) {
+                    ns.print(`Switching to the largest city ${largest}.`);
+                    msgs.push(`Switching to the largest city ${largest}.`);
+                    return;
+                } else {
+                    ns.print(`ERROR Failed to move to the largest city ${largest}.`);
+                    msgs.push(`ERROR Failed to move to the largest city ${largest}.`);
+                }
+            }
         }
     }
 }
@@ -135,7 +147,7 @@ const chooseAction = (ns: NS): BladeburnerCurAction|undefined => {
         }
         if (blackOp !== undefined) {
             const [successMin, successMax] = ns.bladeburner.getActionEstimatedSuccessChance("BlackOp", blackOp);
-            const successAvg = (successMin + successMin + successMax) / 3;
+            const successAvg = (successMin + successMax) / 2;
             if (successAvg > 0.85) {
                 return {type: "BlackOp", name: blackOp};
             }

@@ -77,7 +77,7 @@ export async function main(ns: MyNS): Promise<void> {
             globalStatus = `Studying to hacking level ${studyUntilHackLevel}.`
         } else {
             if ( (ns.getPlayer().bitNodeN !== 8) && ( (! ns.bladeburner.inBladeburner()) && (! hasStats) ) ) {
-                const crime = maxStats(ns, player);
+                const crime = maxStats(ns, player, 100);
                 if ( (currWork === null) || (! ("type" in currWork)) || (currWork["crimeType"] !== crime.type) ) {
                     ns.singularity.commitCrime(crime.type as CrimeType, ns.singularity.isFocused());
                 }
@@ -97,9 +97,15 @@ export async function main(ns: MyNS): Promise<void> {
                     if (installed.includes("The Blade's Simulacrum")) {
                         globalStatus = "You can double act! Let's do something with it!";
                     } else {
-                        globalStatus = "Letting the bladeburner script do its thing.";
                         if (hasStats) {
+                            globalStatus = "Letting the bladeburner script do its thing.";
                             ns.singularity.stopAction();
+                        } else {
+                            const crime = maxStats(ns, player, 100);
+                            if ( (currWork === null) || (! ("type" in currWork)) || (currWork["crimeType"] !== crime.type) ) {
+                                ns.singularity.commitCrime(crime.type as CrimeType, ns.singularity.isFocused());
+                            }
+                            globalStatus = `Committing the crime that most quickly gets our stats to 100.`;
                         }
                     }
                 }
