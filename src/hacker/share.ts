@@ -39,7 +39,7 @@ export async function main(ns: NS): Promise<void> {
     // Disable default Logging
     ns.disableLog("ALL");
 
-    const boxRam = createSidebarItem("RAM", "<p>Loading...</p>", "\ueabe") as BoxNode;
+    const boxRam = createSidebarItem("RAM (Share)", "<p>Loading...</p>", "\ueabe") as BoxNode;
     // const boxAttacks = createBox("Attacks", "<p>Loading...</p>", "\ueb01") as BoxNode;
 
     // automatically backdoor these servers. Requires singularity functions.
