@@ -93,11 +93,18 @@ function renderBox(ns: NS, box: BoxNode, winChance: number): void {
     const avg = deltas.reduce((acc, curr) => { return acc + curr; }, 0) / deltas.length;
     const perSec = avg / sleepTime;
     const reputation = ns.singularity.getFactionRep(gangInfo.faction);
-    const goal = 2500000;
+    // calc rep goal
+    //   Get list of all gang-faction augments
+    const augs = ns.singularity.getAugmentationsFromFaction(gangInfo.faction);
+    //   Filter out ones we already have
+    const owned = ns.singularity.getOwnedAugmentations(true);
+    const unowned = augs.filter(a => ! owned.includes(a));
+    //   Get maximum repreq
+    const goal = Math.max(...unowned.map(a => ns.singularity.getAugmentationRepReq(a)));
     if (reputation < goal) {
         const needed = goal - reputation;
         const time = needed / perSec;
-        bodyStr += `<p>~${seconds2string(ns, time)} to max rep</p>`;
+        bodyStr += `<p>~${seconds2string(ns, time)} to max rep (${ns.formatNumber(goal, 2)})</p>`;
     }
 
     box.body.innerHTML = bodyStr;
@@ -249,13 +256,22 @@ function taskValue(ns: NS, gangInfo: GangGenInfo, member: string, task: string) 
         moneyGain = Math.max(moneyGain, respectGain);
     }
 
+    // calc rep goal
+    //   Get list of all gang-faction augments
+    const augs = ns.singularity.getAugmentationsFromFaction(gangInfo.faction);
+    //   Filter out ones we already have
+    const owned = ns.singularity.getOwnedAugmentations(true);
+    const unowned = augs.filter(a => ! owned.includes(a));
+    //   Get maximum repreq
+    const goal = Math.max(...unowned.map(a => ns.singularity.getAugmentationRepReq(a)));
+
     // ns.singularity.getFactionRep(gangInfo.faction) > 2500000
-	// if (ns.getServerMoneyAvailable("home") > 10e12) {
-	// 	// if we got all augmentations, money from gangs is probably not relevant anymore; so focus on respect
-	// 	// set money gain at least to respect gain in case of low money gain tasks like terrorism
-	// 	moneyGain /= 100; // compare money to respect gain value; give respect more priority
-	// 	moneyGain = Math.max(moneyGain, respectGain);
-	// }
+	if ( (ns.getServerMoneyAvailable("home") > 10e15) && (ns.singularity.getFactionRep(gangInfo.faction) < goal) ) {
+		// if we got all augmentations, money from gangs is probably not relevant anymore; so focus on respect
+		// set money gain at least to respect gain in case of low money gain tasks like terrorism
+		moneyGain /= 100; // compare money to respect gain value; give respect more priority
+		moneyGain = Math.max(moneyGain, respectGain);
+	}
 
 	// return a value based on money gain and respect gain
 	return respectGain * moneyGain;

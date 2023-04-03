@@ -163,17 +163,17 @@ const launchScripts: ILaunchOption[] = [
     {
         uuid: "stocks_no4s",
         desription: "No-4S Stock Trader",
-        script: "/d/launch.js",
+        script: "/stocks/no4s/launch.js",
         threads: 1,
         args: [],
-        mem: 9.8,
+        mem: 21.3,
         sequence: 19,
         selected: true
     },
     {
         uuid: "stocks_4s",
         desription: "4S Stock Trader",
-        script: "/stocks/manager.js",
+        script: "/stocks/4s.js",
         threads: 1,
         args: [],
         mem: 0,
