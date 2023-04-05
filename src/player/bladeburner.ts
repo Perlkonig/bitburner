@@ -1,4 +1,5 @@
-import { BladeburnerCurAction, CityName, NS } from "@ns";
+import { BladeburnerCurAction, CityName } from "@ns";
+import { MyNS } from "../../MyTypes";
 
 const cities = ["Sector-12", "Chongqing", "New Tokyo", "Ishima", "Aevum", "Volhaven"];
 
@@ -37,13 +38,13 @@ const lowHPThresh = 0; //0.2;
 const highHPThresh = 0; //0.8;
 
 // /** @param {NS} ns **/
-// export async function main(ns: NS): Promise<void> {
+// export async function main(ns: MyNS): Promise<void> {
 // }
 
 let msgs: string[] = [];
-let restTriggered = false;
+export let restTriggered = false;
 
-export const tick = (ns: NS): string => {
+export const tick = (ns: MyNS): string => {
     msgs = [];
     allocateSkills(ns);
     chooseCity(ns);
@@ -51,7 +52,17 @@ export const tick = (ns: NS): string => {
     // Find out what the best option is
     const best = chooseAction(ns);
     if (best === undefined) {
-        msgs.push("Choosing to do nothing. Go work out or something!");
+        if (ns.heart.break() > -54000) {
+            ns.bladeburner.stopBladeburnerAction();
+            const focused = ns.singularity.isFocused();
+            const work = ns.singularity.getCurrentWork();
+            if ( (work === null) || (! ("type" in work)) || (work.type !== "CRIME") || (work.crimeType !== "Homicide") ) {
+                ns.singularity.commitCrime("Homicide", focused);
+            }
+            msgs.push("Committing homicide to advance karma.");
+        } else {
+            msgs.push("Choosing to do nothing. Go work out or something!");
+        }
     } else {
         // Compare it to what we're doing and change if necessary
         const curr = ns.bladeburner.getCurrentAction();
@@ -77,7 +88,7 @@ export const tick = (ns: NS): string => {
     return `<p>${msgs.join("</p><p>")}</p>`;
 }
 
-const chooseCity = (ns: NS): void => {
+const chooseCity = (ns: MyNS): void => {
     const city = ns.bladeburner.getCity();
     const population = ns.bladeburner.getCityEstimatedPopulation(city);
     if (population <= 1e9) {
@@ -109,7 +120,7 @@ const chooseCity = (ns: NS): void => {
     }
 }
 
-const allocateSkills = (ns: NS): void => {
+const allocateSkills = (ns: MyNS): void => {
     for (const [name, weight] of [...skillPriority.entries()].sort(() => Math.random() - Math.random())) {
         const pts = ns.bladeburner.getSkillPoints();
         const level = ns.bladeburner.getSkillLevel(name);
@@ -130,13 +141,17 @@ const allocateSkills = (ns: NS): void => {
     }
 }
 
-const chooseAction = (ns: NS): BladeburnerCurAction|undefined => {
+const chooseAction = (ns: MyNS): BladeburnerCurAction|undefined => {
     const [currStamina, maxStamina] = ns.bladeburner.getStamina();
     const player = ns.getPlayer();
 
     if ( (currStamina <= (maxStamina * lowStaminaThresh)) || ( (currStamina <= (maxStamina * highStaminaThresh)) && (restTriggered) ) || (player.hp.current <= (player.hp.max * lowHPThresh)) || ( (player.hp.current <= (player.hp.max * highHPThresh) ) && (restTriggered) ) ) {
         restTriggered = true;
-        return {type: "General", name: "Hyperbolic Regeneration Chamber"};
+        if (ns.heart.break() > -54000) {
+            return undefined;
+        } else {
+            return {type: "General", name: "Hyperbolic Regeneration Chamber"};
+        }
     } else {
         restTriggered = false;
         // Black Ops first

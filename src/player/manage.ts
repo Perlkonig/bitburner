@@ -4,7 +4,7 @@ import { CrimeType, Player } from "@ns";
 import { BoxNode, MyNS } from "../../MyTypes";
 import { createSidebarItem, sidebar } from "lib/box/box";
 import { maxKarma, maxStats } from "lib/crime";
-import { tick as bbTick } from "player/bladeburner";
+import { tick as bbTick, restTriggered } from "player/bladeburner";
 
 const studyUntilHackLevel = 50;
 
@@ -99,7 +99,9 @@ export async function main(ns: MyNS): Promise<void> {
                     } else {
                         if (hasStats) {
                             globalStatus = "Letting the bladeburner script do its thing.";
-                            ns.singularity.stopAction();
+                            if ( (! restTriggered) || (ns.heart.break() <= -54000) ) {
+                                ns.singularity.stopAction();
+                            }
                         } else {
                             const crime = maxStats(ns, player, 100);
                             if ( (currWork === null) || (! ("type" in currWork)) || (currWork["crimeType"] !== crime.type) ) {
