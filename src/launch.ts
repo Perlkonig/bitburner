@@ -166,7 +166,7 @@ const launchScripts: ILaunchOption[] = [
         script: "/stocks/no4s/launch.js",
         threads: 1,
         args: [],
-        mem: 21.3,
+        mem: 24.2,
         sequence: 19,
         selected: true
     },
@@ -208,6 +208,16 @@ const launchScripts: ILaunchOption[] = [
         args: ["study"],
         mem: 0,
         sequence: 0,
+        selected: false
+    },
+    {
+        uuid: "stanek",
+        desription: "Stanek's Gift",
+        script: "stanek.js",
+        threads: 1,
+        args: ["BB"],
+        mem: 0,
+        sequence: 1,
         selected: false
     },
     {

@@ -37,6 +37,8 @@ const growScriptName = "/helpers/grow.js";
 const hackScriptName = "/helpers/hack.js";
 const shareScriptName = "/helpers/share.js";
 const shareScriptRam = 4;
+const stanekScriptName = "/helpers/stanek.js";
+const stanekScriptRam = 7;
 
 // list of slave script files
 const files = [weakenScriptName, growScriptName, hackScriptName];
@@ -131,6 +133,25 @@ export async function main(ns: NS): Promise<void> {
         // scan and nuke all accesible servers
         servers = await scanAndNuke(ns);
         // ns.print(`servers:${[...servers.values()]}`)
+
+        // Some servers are reserved for Stanek charging
+        // const reserved = ["pserv-0", "pserv-1", "pserv-2"];
+        // for (const name of reserved) {
+            // if (servers.has(name)) {
+        for (const name of servers) {
+            if (name.startsWith("pserv-")) {
+                servers.delete(name);
+                ns.scp("/helpers/stanek.js", name);
+                const maxRam = ns.getServerMaxRam(name);
+                const usedRam = ns.getServerUsedRam(name)
+                const freeRam = maxRam - usedRam;
+                const stanekThreads = Math.floor(freeRam / stanekScriptRam);
+                if (stanekThreads > 0) {
+                    ns.print("INFO Stanek threads " + stanekThreads);
+                    ns.exec(stanekScriptName, name, stanekThreads);
+                }
+            }
+        }
 
         for (const server of servers) {
             // transfer files to the servers
