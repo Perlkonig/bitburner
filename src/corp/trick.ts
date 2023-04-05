@@ -67,13 +67,15 @@ export async function main(ns: NS): Promise<void> {
         }
     }
 
-    if ( (ns.args.length === 0) || (ns.args[0] === "init") ) {
+    if ( (ns.corporation.getCorporation().funds > 1e12) && ( (ns.args.length === 0) || (ns.args[0] === "init") ) ) {
         // with gained money, expand to the most profitable division
         ns.corporation.expandIndustry("Healthcare", "Healthcare");
         await initCities(ns, ns.corporation.getDivision("Healthcare"));
 
         ns.tprint("Trick complete and new division configured. Starting the management script.");
         ns.exec("/corp/manage.js", "home");
+    } else {
+        ns.tprint(`New division NOT created!`);
     }
 }
 

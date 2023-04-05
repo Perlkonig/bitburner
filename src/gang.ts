@@ -21,8 +21,11 @@ export async function main(ns: NS): Promise<void> {
 	ns.disableLog("ALL");
 
 	if (!ns.gang.inGang()) {
-		ns.tprint("This script only manages existing gangs.")
-        ns.exit();
+        const success = ns.gang.createGang("Slum Snakes");
+        if (! success) {
+            ns.tprint("Failed to create gang!")
+            ns.exit();
+        }
 	}
 
     // Create initial box

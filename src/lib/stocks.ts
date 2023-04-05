@@ -226,82 +226,82 @@ const calcPercentChange = (lst: number[]): number[]|undefined => {
     return running;
 }
 
-const calcMACD = (lst: number[]): number => {
-    // Calculate the MACD line
-    const day26 = calcEMA(lst, 26);
-    if (day26 === undefined) { return 0; }
-    const day12 = calcEMA(lst, 12);
-    if (day12 === undefined) { return 0; }
-    // reverse the arrays so we can compare them from the ends
-    day26.reverse();
-    day12.reverse();
-    const macd: number[] = [];
-    for (let i = 0; i < day26.length; i++) {
-        macd.push(day12[i] - day26[i]);
-    }
-    //macd can stay reversed because it's easier to do the rest of the calculations
+// const calcMACD = (lst: number[]): number => {
+//     // Calculate the MACD line
+//     const day26 = calcEMA(lst, 26);
+//     if (day26 === undefined) { return 0; }
+//     const day12 = calcEMA(lst, 12);
+//     if (day12 === undefined) { return 0; }
+//     // reverse the arrays so we can compare them from the ends
+//     day26.reverse();
+//     day12.reverse();
+//     const macd: number[] = [];
+//     for (let i = 0; i < day26.length; i++) {
+//         macd.push(day12[i] - day26[i]);
+//     }
+//     //macd can stay reversed because it's easier to do the rest of the calculations
 
-    // Calculate the signal line
-    const signal = calcEMA(macd, 9);
-    if (signal === undefined) { return 0; }
+//     // Calculate the signal line
+//     const signal = calcEMA(macd, 9);
+//     if (signal === undefined) { return 0; }
 
-    // Calculate histogram (mcad - signal)
-    // reverse signal so we can compare from ends
-    signal.reverse();
-    const histogram: number[] = [];
-    for (let i = 0; i < signal.length; i++) {
-        histogram.push(macd[i] - signal[i]);
-    }
-    // everything can stay reversed for simplicity
-    // most recent data point is now index 0
+//     // Calculate histogram (mcad - signal)
+//     // reverse signal so we can compare from ends
+//     signal.reverse();
+//     const histogram: number[] = [];
+//     for (let i = 0; i < signal.length; i++) {
+//         histogram.push(macd[i] - signal[i]);
+//     }
+//     // everything can stay reversed for simplicity
+//     // most recent data point is now index 0
 
-    // Now determine a forecast (percent chance of going up vs. down)
-    // Look to see if the histogram just crossed over
-    const crossedUp = (histogram[0] > 0) && (histogram[1] <= 0);
-    const crossedDown = (histogram[0] < 0) && (histogram[1] >= 0);
-    const relative = calcRelativePercent(histogram);
+//     // Now determine a forecast (percent chance of going up vs. down)
+//     // Look to see if the histogram just crossed over
+//     const crossedUp = (histogram[0] > 0) && (histogram[1] <= 0);
+//     const crossedDown = (histogram[0] < 0) && (histogram[1] >= 0);
+//     const relative = calcRelativePercent(histogram);
 
-    // If it crossed upwards, signal a buy.
-    // If it crossed downards, signal a sell.
-    // Otherwise return a percent based on the relative magnitude of the histogram
-    if (crossedUp) {
-        return 1;
-    } else if (crossedDown) {
-        return 0;
-    } else {
-        return 0.5;
-    }
-}
+//     // If it crossed upwards, signal a buy.
+//     // If it crossed downards, signal a sell.
+//     // Otherwise return a percent based on the relative magnitude of the histogram
+//     if (crossedUp) {
+//         return 1;
+//     } else if (crossedDown) {
+//         return 0;
+//     } else {
+//         return 0.5;
+//     }
+// }
 
-const calcRelativePercent = (lst: number[]): number => {
-    if (lst[0] === 0) {
-        return 0;
-    }
-    const val = Math.abs(lst[0]);
-    let max = Math.max(...lst);
-    if (lst[0] < 0) {
-        max = Math.min(...lst);
-    }
-    return 1 - (val / max);
-}
+// const calcRelativePercent = (lst: number[]): number => {
+//     if (lst[0] === 0) {
+//         return 0;
+//     }
+//     const val = Math.abs(lst[0]);
+//     let max = Math.max(...lst);
+//     if (lst[0] < 0) {
+//         max = Math.min(...lst);
+//     }
+//     return 1 - (val / max);
+// }
 
 /**
  * Calculates the EMAs for a given period (p) from the beginning to the end of a data set.
  * The resulting list will be the length of the original list minus the period.
  */
-const calcEMA = (lst: number[], p = 14): number[]|undefined => {
-    if (lst.length < p + 1) {
-        return undefined;
-    }
-    const initial = lst.slice(0, p);
-    const rest = lst.slice(p);
-    const factor = 2 / (p + 1);
-    const sma = initial.reduce((a: number, b: number) => {return a+b}, 0) / initial.length;
-    const running = [sma];
-    for (const n of rest) {
-        running.push((n * factor) + (running[running.length - 1] * (1 - factor)));
-    }
-    // remove the first simple moving average seed
-    running.splice(0,1);
-    return running;
-}
+// const calcEMA = (lst: number[], p = 14): number[]|undefined => {
+//     if (lst.length < p + 1) {
+//         return undefined;
+//     }
+//     const initial = lst.slice(0, p);
+//     const rest = lst.slice(p);
+//     const factor = 2 / (p + 1);
+//     const sma = initial.reduce((a: number, b: number) => {return a+b}, 0) / initial.length;
+//     const running = [sma];
+//     for (const n of rest) {
+//         running.push((n * factor) + (running[running.length - 1] * (1 - factor)));
+//     }
+//     // remove the first simple moving average seed
+//     running.splice(0,1);
+//     return running;
+// }

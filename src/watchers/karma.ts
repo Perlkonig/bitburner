@@ -17,8 +17,12 @@ export async function main(ns: MyNS): Promise<void> {
         }
         karma = ns.heart.break();
         if (Math.abs(karma) >= karmaTarget) {
+            ns.tprint("Karma target reached. Starting gang management script.");
             ns.toast("Karma target reached.", "success", null);
             sidebar.removeChild(box);
+            ns.exec("gang.js", "home");
+            await ns.sleep(500);
+            ns.exec("sleeves.js", "home");
             ns.exit();
         }
         const delta = Math.abs(karma - lastKarma);
